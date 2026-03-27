@@ -1,0 +1,40 @@
+# ----------------------------------
+# Anomaly Detection - Ignore Rules
+# ----------------------------------
+
+# Data Folder:
+[dD]ata*/
+
+
+# Data Docs:
+*.csv
+
+
+# Custom directories
+.notes/
+.docs/
+.intermediate/
+
+
+# General-----------------------------
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+
+# Jupyter (auto backups)
+.ipynb_checkpoints/
+
+
+# VSCode (local setup)
+.vscode/
+
+
+# MacOS extra
+.DS_Store
+
+
+# Cache general
+.cache/
