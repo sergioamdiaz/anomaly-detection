@@ -21,6 +21,14 @@
 
 # General-----------------------------
 
+
+# Temporal Files:
+~$*
+*.tmp
+*.swp
+*.bak
+
+
 # Python cache
 __pycache__/
 *.pyc
