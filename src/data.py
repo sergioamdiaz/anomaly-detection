@@ -5,7 +5,6 @@
 from pathlib import Path
 import random
 import os
-from types import FunctionType
 
 import numpy as np
 import tensorflow as tf
@@ -54,17 +53,17 @@ def list_files(directory: Path) -> list[Path]:
                 n+=1
                 continue
             files.append(Path(root) / fl)
-    print(f'{n} invalid-format image files were skipped')
+    print(f'{n} invalid-format image files were skipped') if n > 0 else print('All images have valid formats')
     files.sort()
     return files
 
 #-------------------------------------------------------------------------------
 # Load Data:
 
-def load_image_tf(path: Path) -> tf.Tensor:
+def _load_image_tf(tf_path: tf.Tensor) -> tf.Tensor:
     ''' Loads an image from the given path and preprocesses it for training. Only supports JPG images.
     Returns a tensor of shape (H, W, 3) and dtype float32 with pixel values in [0,1]. '''
-    image_bytes = tf.io.read_file(str(path)) # read the image file as a bytes string
+    image_bytes = tf.io.read_file(tf_path) # read the image file as a bytes string
     image = tf.image.decode_jpeg(image_bytes, channels=3) # decode the bytes string into a tensor of shape (H, W, 3) and dtype uint8
     image = tf.image.convert_image_dtype(image, tf.float32)  # Rescale to [0,1] (better for training)
     image = tf.image.resize(image, IMG_SIZE) # Since the image is already square, the resizing will not distort the image
@@ -73,7 +72,7 @@ def load_image_tf(path: Path) -> tf.Tensor:
 #-------------------------------------------------------------------------------
 # Add Noise:
 
-def _add_mild_corruption(image: tf.Tensor, corruption_factor: float = 0.5) -> tf.Tensor:
+def _add_mild_corruption(image: tf.Tensor, corruption_factor: float) -> tf.Tensor:
     ''' Adds mild corruption to the given image tensor. Returns a corrupted image tensor of the same shape and dtype as the input, with pixel values in [0,1]. '''
     x = image
     # Mild Gaussian noise
@@ -91,24 +90,28 @@ def _add_mild_corruption(image: tf.Tensor, corruption_factor: float = 0.5) -> tf
 
     return x
 
-def corrupt_and_clean_from_path(path: Path, corruption_factor: float = 0.5
+def corrupt_and_clean_from_path(tf_path: tf.Tensor, corruption_factor: float,
                                 ) -> tuple[tf.Tensor, tf.Tensor]:
     ''' Loads the image at the given path, creates a mildly corrupted version of it, and returns both the corrupted and clean images as tensors. '''
-    clean = load_image_tf(path)
+    clean = _load_image_tf(tf_path)
     corrupted = _add_mild_corruption(clean, corruption_factor)
     return corrupted, clean
 
 #-------------------------------------------------------------------------------
 # Create Dataset:
 
-def create_dataset(paths: list[Path], shuffle: bool = True, corruption_factor: float = 0.5) -> tf.data.Dataset:
-  # Create a dataset with the list of paths:
+def create_dataset(paths: list[Path], 
+                   shuffle: bool = True, 
+                   corruption_factor: float = 0.5) -> tf.data.Dataset:
+  # Create a dataset with the list of paths (elements will be tf.Tensors):
   lazy_ds = tf.data.Dataset.from_tensor_slices([str(p) for p in paths])
   # Shuffles (only the paths, not the images yet) to ensure random order at each epoch during training:
   lazy_ds = (lazy_ds.shuffle(buffer_size=len(paths), seed=SEED)) if shuffle else lazy_ds
   # Apply corruption and loading in parallel to speed up the data pipeline:
-  lazy_ds = lazy_ds.map(lambda x: corrupt_and_clean_from_path(x, corruption_factor=0.5), 
-                        num_parallel_calls=AUTOTUNE) # Each element of the dataset is now a tuple (corrupted_image, clean_image)
+  lazy_ds = lazy_ds.map(lambda x: corrupt_and_clean_from_path(x, corruption_factor), 
+                        num_parallel_calls=AUTOTUNE) # x is a tf.Tensor
+  # Each element of the dataset is now a tuple (corrupted_image, clean_image)
+  
   # Batch the dataset:
   lazy_ds = lazy_ds.batch(BATCH_SIZE)
   # Prefetch to improve performance:
