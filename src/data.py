@@ -1,0 +1,117 @@
+#*******************************************************************************
+# IMPORTS:
+#*******************************************************************************
+
+from pathlib import Path
+import random
+import os
+from types import FunctionType
+
+import numpy as np
+import tensorflow as tf
+
+
+#-------------------------------------------------------------------------------
+# Paths
+#-------------------------------------------------------------------------------
+
+DATA_DIR = Path("../data/data_jpg_crop_512x512").resolve()
+print(DATA_DIR, '\n')
+
+#-------------------------------------------------------------------------------
+# Constants
+#-------------------------------------------------------------------------------
+
+SEED = 42
+IMG_SIZE = (512, 512)
+BATCH_SIZE = 8
+EPOCHS = 40
+VAL_SPLIT = 0.15
+AUTOTUNE = tf.data.AUTOTUNE # -1
+
+VALID_EXTS = {".jpg", ".jpeg"}
+
+random.seed(SEED)
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+
+# NOTE: These constants can be added in the future to the config file. For now they are hardcoded here for simplicity.
+
+#*******************************************************************************
+# DATA LOADING AND PREPROCESSING:
+#*******************************************************************************
+
+#-------------------------------------------------------------------------------
+# List Paths:
+
+def list_files(directory: Path) -> list[Path]:
+    """ Returns the list of paths of all the images in the given directory and subdirectories. """
+    files = []
+    n = 0
+    for root, dirs, filenames in os.walk(directory):
+        for fl in filenames:
+            if Path(fl).suffix.lower() not in VALID_EXTS: # skip non-image files
+                n+=1
+                continue
+            files.append(Path(root) / fl)
+    print(f'{n} invalid-format image files were skipped')
+    files.sort()
+    return files
+
+#-------------------------------------------------------------------------------
+# Load Data:
+
+def load_image_tf(path: Path) -> tf.Tensor:
+    ''' Loads an image from the given path and preprocesses it for training. Only supports JPG images.
+    Returns a tensor of shape (H, W, 3) and dtype float32 with pixel values in [0,1]. '''
+    image_bytes = tf.io.read_file(str(path)) # read the image file as a bytes string
+    image = tf.image.decode_jpeg(image_bytes, channels=3) # decode the bytes string into a tensor of shape (H, W, 3) and dtype uint8
+    image = tf.image.convert_image_dtype(image, tf.float32)  # Rescale to [0,1] (better for training)
+    image = tf.image.resize(image, IMG_SIZE) # Since the image is already square, the resizing will not distort the image
+    return image
+
+#-------------------------------------------------------------------------------
+# Add Noise:
+
+def _add_mild_corruption(image: tf.Tensor, corruption_factor: float = 0.5) -> tf.Tensor:
+    ''' Adds mild corruption to the given image tensor. Returns a corrupted image tensor of the same shape and dtype as the input, with pixel values in [0,1]. '''
+    x = image
+    # Mild Gaussian noise
+    noise = tf.random.normal(shape=tf.shape(x), mean=0.0, stddev=corruption_factor, dtype=tf.float32)
+    x = x + noise # Add noise. Can push pixels outside [0,1].
+    x = tf.clip_by_value(x, 0.0, 1.0) # Ensure pixel values are still in [0,1]. If p > 1 → 1, if p < 0 → 0.
+
+    # Mild brightness variation
+    x = tf.image.random_brightness(x, max_delta=0.05)
+    x = tf.clip_by_value(x, 0.0, 1.0)
+
+    # Mild contrast variation
+    x = tf.image.random_contrast(x, lower=0.95, upper=1.05)
+    x = tf.clip_by_value(x, 0.0, 1.0)
+
+    return x
+
+def corrupt_and_clean_from_path(path: Path, corruption_factor: float = 0.5
+                                ) -> tuple[tf.Tensor, tf.Tensor]:
+    ''' Loads the image at the given path, creates a mildly corrupted version of it, and returns both the corrupted and clean images as tensors. '''
+    clean = load_image_tf(path)
+    corrupted = _add_mild_corruption(clean, corruption_factor)
+    return corrupted, clean
+
+#-------------------------------------------------------------------------------
+# Create Dataset:
+
+def create_dataset(paths: list[Path], shuffle: bool = True, corruption_factor: float = 0.5) -> tf.data.Dataset:
+  # Create a dataset with the list of paths:
+  lazy_ds = tf.data.Dataset.from_tensor_slices([str(p) for p in paths])
+  # Shuffles (only the paths, not the images yet) to ensure random order at each epoch during training:
+  lazy_ds = (lazy_ds.shuffle(buffer_size=len(paths), seed=SEED)) if shuffle else lazy_ds
+  # Apply corruption and loading in parallel to speed up the data pipeline:
+  lazy_ds = lazy_ds.map(lambda x: corrupt_and_clean_from_path(x, corruption_factor=0.5), 
+                        num_parallel_calls=AUTOTUNE) # Each element of the dataset is now a tuple (corrupted_image, clean_image)
+  # Batch the dataset:
+  lazy_ds = lazy_ds.batch(BATCH_SIZE)
+  # Prefetch to improve performance:
+  lazy_ds = lazy_ds.prefetch(AUTOTUNE)
+
+  return lazy_ds
