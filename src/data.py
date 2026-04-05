@@ -9,6 +9,8 @@ import os
 import numpy as np
 import tensorflow as tf
 
+import logging
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 #-------------------------------------------------------------------------------
 # Constants
@@ -39,15 +41,17 @@ def list_files(directory: Path) -> list[Path]:
     """ Returns the list of paths of all the images in the given directory and subdirectories. """
     files = []
     n = 0
+    logging.info(f"Scanned directories:")
     for root, dirs, filenames in os.walk(directory):
         # Modify 'dirs' in place so certain folders are exluded from the search:
+        logging.info(f'{root}')
         dirs[ : ] = [d for d in dirs if d not in SKIP_DIRS]
         for fl in filenames:
             if Path(fl).suffix.lower() not in VALID_EXTS: # skip non-image files
                 n+=1
                 continue
             files.append(Path(root) / fl)
-    print(f'{n} invalid-format image files were skipped') if n > 0 else print('All images have valid formats')
+    print(f'\n{n} invalid-format image files were skipped') if n > 0 else print('\nAll images have valid formats')
     files.sort()
     return files
 
