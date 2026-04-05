@@ -20,6 +20,7 @@ BATCH_SIZE = 8
 AUTOTUNE = tf.data.AUTOTUNE # -1
 
 VALID_EXTS = {".jpg", ".jpeg"}
+SKIP_DIRS = ['Flagged']
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -39,6 +40,8 @@ def list_files(directory: Path) -> list[Path]:
     files = []
     n = 0
     for root, dirs, filenames in os.walk(directory):
+        # Modify 'dirs' in place so certain folders are exluded from the search:
+        dirs[ : ] = [d for d in dirs if d not in SKIP_DIRS]
         for fl in filenames:
             if Path(fl).suffix.lower() not in VALID_EXTS: # skip non-image files
                 n+=1
