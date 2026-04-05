@@ -20,7 +20,7 @@ BATCH_SIZE = 8
 AUTOTUNE = tf.data.AUTOTUNE # -1
 
 VALID_EXTS = {".jpg", ".jpeg"}
-SKIP_DIRS = ['Flagged']
+SKIP_DIRS = ['flagged']
 
 random.seed(SEED)
 np.random.seed(SEED)
