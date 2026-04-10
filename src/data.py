@@ -36,10 +36,11 @@ tf.random.set_seed(SEED)
 #-------------------------------------------------------------------------------
 # List Paths:
 
-def list_files(directory: Path, skip_dirs: list[str] = []) -> list[Path]:
+def list_files(directory: Path, skip_dirs: set[str] | None = None) -> list[Path]:
     """ Returns the list of paths of all the images in the given directory and subdirectories.
     If skip_dirs is not given, no folders will be skipped.
     """
+    skip_dirs = skip_dirs or set() # None, set(), [], {}, "" → set()
     files = []
     n = 0
     logging.debug(f"Scanned directories:")
