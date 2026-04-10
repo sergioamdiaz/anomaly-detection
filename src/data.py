@@ -53,7 +53,9 @@ def list_files(directory: Path, skip_dirs: set[str] | None = None) -> list[Path]
                 n+=1
                 continue
             files.append(Path(root) / fl)
-    print(f'\n{n} invalid-format image files were skipped') if n > 0 else print('\nAll images have valid formats')
+    print(('-'*80 + f'\n{n} invalid-format files were skipped\n' + '-'*80)
+          if n > 0 else print('-'*80 + '\nAll images have valid formats\n' + '-'*80))
+    
     files.sort()
     return files
 
