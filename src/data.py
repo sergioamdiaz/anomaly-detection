@@ -37,20 +37,22 @@ tf.random.set_seed(SEED)
 # List Paths:
 
 def list_files(directory: Path, skip_dirs: list[str] = []) -> list[Path]:
-    """ Returns the list of paths of all the images in the given directory and subdirectories. """
+    """ Returns the list of paths of all the images in the given directory and subdirectories.
+    If skip_dirs is not given, no folders will be skipped.
+    """
     files = []
     n = 0
-    logging.info(f"Scanned directories:")
+    logging.debug(f"Scanned directories:")
     for root, dirs, filenames in os.walk(directory):
         # Modify 'dirs' in place so certain folders are exluded from the search:
-        logging.info(f'{root}')
+        logging.debug(f'{root}')
         dirs[ : ] = [d for d in dirs if d not in skip_dirs]
         for fl in filenames:
             if Path(fl).suffix.lower() not in VALID_EXTS: # skip non-image files
                 n+=1
                 continue
             files.append(Path(root) / fl)
-    print(f'\n{n} invalid-format image files were skipped') if n > 0 else print('\nAll images have valid formats')
+    logging.info(f'\n{n} invalid-format image files were skipped') if n > 0 else print('\nAll images have valid formats')
     files.sort()
     return files
 
