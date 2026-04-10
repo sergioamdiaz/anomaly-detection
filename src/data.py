@@ -22,7 +22,6 @@ BATCH_SIZE = 8
 AUTOTUNE = tf.data.AUTOTUNE # -1
 
 VALID_EXTS = {".jpg", ".jpeg"}
-SKIP_DIRS = ['flagged']
 
 random.seed(SEED)
 np.random.seed(SEED)
@@ -37,7 +36,7 @@ tf.random.set_seed(SEED)
 #-------------------------------------------------------------------------------
 # List Paths:
 
-def list_files(directory: Path) -> list[Path]:
+def list_files(directory: Path, skip_dirs: list[str] = []) -> list[Path]:
     """ Returns the list of paths of all the images in the given directory and subdirectories. """
     files = []
     n = 0
@@ -45,7 +44,7 @@ def list_files(directory: Path) -> list[Path]:
     for root, dirs, filenames in os.walk(directory):
         # Modify 'dirs' in place so certain folders are exluded from the search:
         logging.info(f'{root}')
-        dirs[ : ] = [d for d in dirs if d not in SKIP_DIRS]
+        dirs[ : ] = [d for d in dirs if d not in skip_dirs]
         for fl in filenames:
             if Path(fl).suffix.lower() not in VALID_EXTS: # skip non-image files
                 n+=1
