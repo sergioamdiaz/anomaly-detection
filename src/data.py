@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 
 import logging
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+logger = logging.getLogger(__name__)
 
 #-------------------------------------------------------------------------------
 # Constants
@@ -43,10 +43,10 @@ def list_files(directory: Path, skip_dirs: set[str] | None = None) -> list[Path]
     skip_dirs = skip_dirs or set() # None, set(), [], {}, "" → set()
     files = []
     n = 0
-    logging.debug(f"Scanned directories:")
+    logger.debug(f"Scanned directories:")
     for root, dirs, filenames in os.walk(directory):
         # Modify 'dirs' in place so certain folders are exluded from the search:
-        logging.debug(f'{root}')
+        logger.debug(f'{root}')
         dirs[ : ] = [d for d in dirs if d not in skip_dirs]
         for fl in filenames:
             if Path(fl).suffix.lower() not in VALID_EXTS: # skip non-image files
