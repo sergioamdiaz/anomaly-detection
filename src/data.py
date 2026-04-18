@@ -43,10 +43,10 @@ def list_files(directory: Path, skip_dirs: set[str] | None = None) -> list[Path]
     skip_dirs = skip_dirs or set() # None, set(), [], {}, "" → set()
     files = []
     n = 0
-    logger.debug(f"Scanned directories:")
+    logger.debug('Scanned directories:')
     for root, dirs, filenames in os.walk(directory):
         # Modify 'dirs' in place so certain folders are exluded from the search:
-        logger.debug(f'{root}')
+        logger.debug('%s', root)
         dirs[ : ] = [d for d in dirs if d not in skip_dirs]
         for fl in filenames:
             if Path(fl).suffix.lower() not in VALID_EXTS: # skip non-image files
